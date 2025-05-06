@@ -992,6 +992,7 @@ dependencies = [
  "env_logger",
  "flate2",
  "gzp",
+ "linear-map",
  "log",
  "natord",
  "needletail",

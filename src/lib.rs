@@ -1,4 +1,21 @@
-use rust_htslib::bam::{self, Read};
+use linear_map::LinearMap;
+use rust_htslib::bam::header::HeaderRecord;
+use rust_htslib::bam::{self, Header, Read};
+use std::collections::HashMap;
+
+pub fn header_from_hashmap(hash_header: HashMap<String, Vec<LinearMap<String, String>>>) -> Header {
+    let mut header = Header::new();
+    for (key, values) in hash_header.iter() {
+        for value in values {
+            let mut record = HeaderRecord::new(key.as_bytes());
+            for (tag, val) in value.iter() {
+                record.push_tag(tag.as_bytes(), val);
+            }
+            header.push_record(&record);
+        }
+    }
+    header
+}
 
 pub fn bam_reader_from_path_or_stdin(path: &str, threads: usize) -> bam::Reader {
     let mut bam = if path == "-" {
@@ -18,6 +35,15 @@ pub fn bam_writer_from_path_or_stdout(
     uncompressed: bool,
 ) -> bam::Writer {
     let mut header = bam::Header::from_template(header);
+    bam_writer_from_header_and_path_or_stdout(path, &mut header, threads, uncompressed)
+}
+
+pub fn bam_writer_from_header_and_path_or_stdout(
+    path: &str,
+    header: &mut bam::Header,
+    threads: usize,
+    uncompressed: bool,
+) -> bam::Writer {
     // add a PG line to the header
     let mut pg_line = bam::header::HeaderRecord::new(b"PG");
     pg_line.push_tag(b"ID", "sync-tags");
