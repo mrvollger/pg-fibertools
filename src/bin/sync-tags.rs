@@ -1,6 +1,7 @@
 use clap::Parser;
 use log;
-use rust_htslib::bam::{self, Read};
+use pg_fibertools::*;
+use rust_htslib::bam::Read;
 use std::fmt::Debug;
 
 // Args,
@@ -26,79 +27,6 @@ pub struct SyncTagsArgs {
     /// pan spec delimiter
     #[clap(short = 'd', long, default_value = "#")]
     pan_spec_delimiter: String,
-}
-pub fn strip_pan_spec_header(header: &bam::Header, pan_spec_delimiter: &char) {
-    //static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new("([^#]+)#([^#]+)#(.+)").unwrap());
-    let mut hash_map = header.to_hashmap();
-    for (key, value) in hash_map.iter_mut() {
-        if key.eq("SQ") {
-            for sn_line in value.iter_mut() {
-                let name = sn_line
-                    .get_mut("SN")
-                    .expect("SN tag not found within an @SQ line");
-                let mut del_count = 0;
-                let mut new_name = String::new();
-                for char in name.chars() {
-                    if del_count >= 2 {
-                        new_name.push(char);
-                    } else if char == *pan_spec_delimiter {
-                        del_count += 1;
-                    }
-                }
-                name.clear();
-                name.push_str(&new_name);
-            }
-        }
-    }
-}
-
-pub fn bam_reader_from_path_or_stdin(path: &str, threads: usize) -> bam::Reader {
-    let mut bam = if path == "-" {
-        bam::Reader::from_stdin().expect("Failed to open BAM file from stdin")
-    } else {
-        bam::Reader::from_path(path).expect("Failed to open BAM file from path")
-    };
-    bam.set_threads(threads)
-        .expect("Failed to set threads for BAM reader");
-    bam
-}
-
-pub fn bam_writer_from_path_or_stdout(
-    path: &str,
-    header: &bam::HeaderView,
-    threads: usize,
-    uncompressed: bool,
-) -> bam::Writer {
-    let mut header = bam::Header::from_template(header);
-    // add a PG line to the header
-    let mut pg_line = bam::header::HeaderRecord::new(b"PG");
-    pg_line.push_tag(b"ID", "sync-tags");
-    pg_line.push_tag(b"PN", "sync-tags");
-    pg_line.push_tag(b"VN", env!("CARGO_PKG_VERSION"));
-    // get the full command line call as a string
-    let full_cmd = std::env::args()
-        .map(|arg| arg.replace(' ', "\\ "))
-        .collect::<Vec<String>>()
-        .join(" ");
-    pg_line.push_tag(b"CL", full_cmd);
-    header.push_record(&pg_line);
-
-    let mut writer = if path == "-" {
-        bam::Writer::from_stdout(&header, bam::Format::Bam)
-            .expect("Failed to create BAM writer for stdout")
-    } else {
-        bam::Writer::from_path(path, &header, bam::Format::Bam)
-            .expect("Failed to create BAM writer from path")
-    };
-    writer
-        .set_threads(threads)
-        .expect("Failed to set threads for BAM writer");
-    if uncompressed {
-        writer
-            .set_compression_level(bam::CompressionLevel::Uncompressed)
-            .expect("Failed to set compression level");
-    }
-    writer
 }
 
 fn main() {
