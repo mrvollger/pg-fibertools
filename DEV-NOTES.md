@@ -1,0 +1,5 @@
+- Download vscode locally
+- Install cargo/rust
+- Install rust-analyzer extension in vscode
+- clone the repo
+- Open the repo in vscode
