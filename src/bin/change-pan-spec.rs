@@ -4,7 +4,7 @@ use pg_fibertools::*;
 use rust_htslib::bam::{self, Read};
 use std::fmt::Debug;
 
-// Args,
+// Args
 #[derive(Parser, Debug)]
 /// This program synchronizes tags between two BAM files. It applies any tags from the first BAM file to the second BAM file if the read names match and the tags do not already exist in the second BAM file and writes the output to stdout. The order of the reads must be the same in both BAM files. This can be done with, e.g. `samtools sort -N`.
 pub struct ChangePanSpecArgs {
