@@ -2,10 +2,8 @@ use clap::Parser;
 use log;
 use pg_fibertools::*;
 use rust_htslib::bam::Read;
-use std::fmt::Debug;
 
-// Args,
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 /// This program synchronizes tags between two BAM files. It applies any tags from the first BAM file to the second BAM file if the read names match and the tags do not already exist in the second BAM file and writes the output to stdout. The order of the reads must be the same in both BAM files. This can be done with, e.g. `samtools sort -N`.
 pub struct SyncTagsArgs {
     /// First BAM file (source of tags)
@@ -21,12 +19,6 @@ pub struct SyncTagsArgs {
     /// Write uncompressed output
     #[clap(short = 'u', long)]
     uncompressed: bool,
-    /// strip pan spec
-    #[clap(short = 's', long)]
-    strip_pan_spec: bool,
-    /// pan spec delimiter
-    #[clap(short = 'd', long, default_value = "#")]
-    pan_spec_delimiter: String,
 }
 
 fn main() {
@@ -36,6 +28,12 @@ fn main() {
     env_logger::Builder::new()
         .filter(None, log::LevelFilter::Info)
         .init();
+    /*
+    log::debug!("debug is not as important as info");
+    log::info!("hello world");
+    log::warn!("this is a bad spot to be in");
+    log::error!("this is a bad spot to be in");
+     */
 
     // Open the first BAM file (source of tags)
     let mut bam1 = bam_reader_from_path_or_stdin(&args.bam1, args.threads);
@@ -53,7 +51,7 @@ fn main() {
     let mut destination_rec = if let Some(destination_rec) = bam2_iter.next() {
         destination_rec.expect("Failed to read record from second BAM file")
     } else {
-        log::warn!("No records in the second BAM file.");
+        log::error!("No records in the second BAM file.");
         return;
     };
 
@@ -63,6 +61,7 @@ fn main() {
         // Iterate over the second BAM file
         while template_rec.qname() == destination_rec.qname() {
             // Move the tags from the template record to the next read
+            // key could be MM, and value could be anything A+a,0,1,0,2,0,2,0,2,0
             for (key, value) in template_rec
                 .aux_iter()
                 .map(|x| x.expect("Unable to read tag from template BAM file"))
