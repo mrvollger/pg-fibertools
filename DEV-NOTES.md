@@ -21,6 +21,8 @@ be sure to use `--release` in `cargo run` and/or `cargo build` to get the best p
 cargo run --bin sync-tags --release -- --help
 ```
 
+(also don't forget about query sorting the input bam files)
+
 # documentation on rust-htslib (reading and writing bam files)
 
 https://docs.rs/rust-htslib/latest/rust_htslib/

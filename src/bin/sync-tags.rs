@@ -54,12 +54,14 @@ fn main() {
         log::error!("No records in the second BAM file.");
         return;
     };
+    let mut dest_record_was_synced = false;
 
     // Iterate over the first BAM file
     for template_rec in bam1_iter {
         let template_rec = template_rec.expect("Failed to read record from first BAM file");
         // Iterate over the second BAM file
         while template_rec.qname() == destination_rec.qname() {
+            dest_record_was_synced = true;
             // Move the tags from the template record to the next read
             // key could be MM, and value could be anything A+a,0,1,0,2,0,2,0,2,0
             for (key, value) in template_rec
@@ -84,7 +86,10 @@ fn main() {
             } else {
                 log::warn!("No more records in the second BAM file.");
                 break;
-            }
+            };
+            dest_record_was_synced = false;
+
+            // TODO check that each dest record has been synced using dest_record_was_synced
         }
     }
 
