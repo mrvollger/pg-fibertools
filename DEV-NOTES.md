@@ -15,8 +15,14 @@
 
 # once you are running real data
 
-be sure to use `--release` in `cargo run` and/or `cargo build` to get the best performance.
+be sure to use `--release` in `cargo run` and/or `cargo build` to get the best performance. e.g.
+
+```bash
+cargo run --bin sync-tags --release -- --help
+```
 
 # documentation on rust-htslib (reading and writing bam files)
 
 https://docs.rs/rust-htslib/latest/rust_htslib/
+
+git clone .. && git checkout -b anna
