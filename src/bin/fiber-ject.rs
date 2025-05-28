@@ -21,17 +21,15 @@ pub struct FiberJectArgs {
     /// Bam file to process
     #[clap(short, long, default_value = "-")]
     bam: String,
+    /// Output bam file to write
     #[clap(short, long, default_value = "-")]
     out: String,
-    // Command b
-    //#[clap(short = 'b', long)]
-    //command_b: String,
-    /// Command c
-    //#[clap(short = 'c', long)]
-    //command_c: String,
-    /// File to save the output of command injection (GAM)
+    /// Save the output of vg inject (GAM)
     #[clap(short, long)]
     gam: Option<String>,
+    /// Number of threads to use
+    #[clap(short, long, default_value_t = 8)]
+    threads: usize,
 }
 
 fn main() {
@@ -43,9 +41,9 @@ fn main() {
         .init();
 
     // the commands to run
-    let mut cmd_inject = Command::new("time");
-    let mut cmd_surject = Command::new("cat");
-    let mut cmd_clean = Command::new("grep");
+    let mut cmd_inject = Command::new("time"); // replace with vg inject
+    let mut cmd_surject = Command::new("cat"); // replace with vg surject
+    let mut cmd_clean = Command::new("grep"); // replace with our cleanup command
 
     // Run inject command
     cmd_inject.arg(&args.bam).stdout(Stdio::piped());
