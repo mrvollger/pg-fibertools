@@ -99,9 +99,6 @@ fn main() {
         .spawn()
         .unwrap_or_else(|e| panic!("Failed to run: {}", e));
 
-    // write process_clean to args.out
-    io::stdout().write_all(&process_clean.out).unwrap();
-
     // Wait for all commands to finish
     for p in &mut [process_inject, process_surject, process_clean] {
         p.wait().unwrap_or_else(|e| panic!("Error: {}", e));
