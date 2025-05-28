@@ -45,7 +45,7 @@ fn main() {
     // the commands to run
     let mut cmd_inject = Command::new("time");
     let mut cmd_surject = Command::new("cat");
-    let mut cmd_clean = Command::new("grep Cargo");
+    let mut cmd_clean = Command::new("grep");
 
     // Run inject command
     cmd_inject.arg(&args.bam).stdout(Stdio::piped());
@@ -85,7 +85,7 @@ fn main() {
     }
 
     // Run command clean
-    cmd_clean.stdin(
+    cmd_clean.arg("Cargo").stdin(
         process_surject
             .stdout
             .take()
