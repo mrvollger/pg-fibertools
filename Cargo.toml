@@ -12,11 +12,13 @@ log = "0.4.27"
 env_logger = "0.11.8"
 regex = "1.11"
 linear-map = "1.2.0"
+anyhow = "1.0.0"
 # Often used
 colored = "3.0.0"
 natord = "1.0.9"
 needletail = "0.5"
 num-format = "0.4.4"
+assert_cmd = "2.0.11"
 # compression reading and writing
 snap = { version = "1.1", optional = true }
 gzp = { version = "1.0" }

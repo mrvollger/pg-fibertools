@@ -1,6 +1,11 @@
+use assert_cmd::prelude::*;
 use clap::Parser;
 use log;
-use std::process::{Command, Stdio};
+use std::fs::File;
+use std::io::copy;
+use std::process::{Command, Stdio}; // Add methods on commands
+// add anyhow for error handling
+use anyhow::Result;
 
 #[derive(Parser, Debug)]
 /// Execute a complex pipeline involving multiple tools.
@@ -17,9 +22,12 @@ pub struct FiberPipelineArgs {
     /// Write uncompressed output
     #[clap(short = 'u', long)]
     uncompressed: bool,
+    /// Optional file to save the output of vg inject
+    #[clap(long)]
+    gam: Option<String>,
 }
 
-fn main() {
+fn main() -> Result<(), anyhow::Error> {
     let args = FiberPipelineArgs::parse();
 
     // Set log level to info
@@ -34,7 +42,7 @@ fn main() {
     );
 
     // Step 1: change-pan-spec
-    let mut change_pan_spec = Command::new("change-pan-spec")
+    let mut change_pan_spec = Command::cargo_bin("change-pan-spec")?
         .args(&["-t", &args.threads.to_string(), "-u", &args.input])
         .stdout(Stdio::piped())
         .spawn()
@@ -53,6 +61,19 @@ fn main() {
         .spawn()
         .expect("Failed to start vg inject");
 
+    // Optionally save the output of vg inject to a file
+    if let Some(gam_file) = &args.gam {
+        let mut file = File::create(gam_file).expect("Failed to create gam file");
+        copy(
+            &mut vg_inject
+                .stdout
+                .as_mut()
+                .expect("Failed to capture output of vg inject"),
+            &mut file,
+        )
+        .expect("Failed to write output of vg inject to file");
+    }
+
     // Step 3: vg surject
     let mut vg_surject = Command::new("vg")
         .args(&["surject", "-t", &args.threads.to_string()])
@@ -67,7 +88,7 @@ fn main() {
         .expect("Failed to start vg surject");
 
     // Step 4: change-pan-spec
-    let mut change_pan_spec_2 = Command::new("change-pan-spec")
+    let mut change_pan_spec_2 = Command::cargo_bin("change-pan-spec")?
         .args(&["-t", &args.threads.to_string(), "-u"])
         .stdin(
             vg_surject
@@ -93,7 +114,7 @@ fn main() {
         .expect("Failed to start samtools sort -N -u");
 
     // Step 6: sync-tags
-    let mut sync_tags = Command::new("sync-tags")
+    let mut sync_tags = Command::cargo_bin("sync-tags")?
         .args(&[
             "-",
             &format!("<(samtools sort -N -u -@ {} {})", args.threads, args.input),
@@ -142,4 +163,5 @@ fn main() {
         .expect("samtools sort --write-index failed");
 
     log::info!("Pipeline completed successfully.");
+    Ok(())
 }
