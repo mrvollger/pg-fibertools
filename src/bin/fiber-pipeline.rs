@@ -3,9 +3,9 @@ use clap::Parser;
 use log;
 use std::fs::File;
 use std::io::copy;
-use std::process::{Command, Stdio}; // Add methods on commands
+use std::process::{Child, Command, Stdio}; // Add methods on commands
 // add anyhow for error handling
-use anyhow::Result;
+use anyhow::{Error, Result};
 
 #[derive(Parser, Debug)]
 /// Execute a complex pipeline involving multiple tools.
@@ -27,6 +27,59 @@ pub struct FiberPipelineArgs {
     gam: Option<String>,
 }
 
+pub fn run_change_pan_spec(args: &FiberPipelineArgs) -> Child {
+    Command::cargo_bin("change-pan-spec")
+        .expect("change-pan-spec binary not found")
+        .args(&["-t", &args.threads.to_string(), "-u", &args.input])
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to start change-pan-spec, step 1")
+}
+
+pub fn run_vg_inject(change_pan_spec: &mut Child, args: &FiberPipelineArgs) -> Child {
+    // Step 2: vg inject
+    let mut vg_inject = Command::new("vg")
+        .args(&["inject", "-t", &args.threads.to_string()])
+        .stdin(
+            change_pan_spec
+                .stdout
+                .take()
+                .expect("Failed to pipe output from change-pan-spec, step 1.5"),
+        )
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to start vg inject, step 2");
+
+    // Optionally save the output of vg inject to a file
+    if let Some(gam_file) = &args.gam {
+        let mut file = File::create(gam_file).expect("Failed to create gam file");
+        copy(
+            &mut vg_inject
+                .stdout
+                .as_mut()
+                .expect("Failed to capture output of vg inject"),
+            &mut file,
+        )
+        .expect("Failed to write output of vg inject to a GAM file");
+    }
+    vg_inject
+}
+
+pub fn run_vg_surject(vg_inject: &mut Child, args: &FiberPipelineArgs) -> Child {
+    // Step 3: vg surject
+    Command::new("vg")
+        .args(&["surject", "-t", &args.threads.to_string()])
+        .stdin(
+            vg_inject
+                .stdout
+                .take()
+                .expect("Failed to pipe output from vg inject"),
+        )
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to start vg surject")
+}
+
 fn main() -> Result<(), anyhow::Error> {
     let args = FiberPipelineArgs::parse();
 
@@ -42,50 +95,13 @@ fn main() -> Result<(), anyhow::Error> {
     );
 
     // Step 1: change-pan-spec
-    let mut change_pan_spec = Command::cargo_bin("change-pan-spec")?
-        .args(&["-t", &args.threads.to_string(), "-u", &args.input])
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to start change-pan-spec");
+    let mut change_pan_spec = run_change_pan_spec(&args);
 
     // Step 2: vg inject
-    let mut vg_inject = Command::new("vg")
-        .args(&["inject", "-t", &args.threads.to_string()])
-        .stdin(
-            change_pan_spec
-                .stdout
-                .take()
-                .expect("Failed to pipe output from change-pan-spec"),
-        )
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to start vg inject");
-
-    // Optionally save the output of vg inject to a file
-    if let Some(gam_file) = &args.gam {
-        let mut file = File::create(gam_file).expect("Failed to create gam file");
-        copy(
-            &mut vg_inject
-                .stdout
-                .as_mut()
-                .expect("Failed to capture output of vg inject"),
-            &mut file,
-        )
-        .expect("Failed to write output of vg inject to file");
-    }
+    let mut vg_inject = run_vg_inject(&mut change_pan_spec, &args);
 
     // Step 3: vg surject
-    let mut vg_surject = Command::new("vg")
-        .args(&["surject", "-t", &args.threads.to_string()])
-        .stdin(
-            vg_inject
-                .stdout
-                .take()
-                .expect("Failed to pipe output from vg inject"),
-        )
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to start vg surject");
+    let mut vg_surject = run_vg_surject(&mut vg_inject, &args);
 
     // Step 4: change-pan-spec
     let mut change_pan_spec_2 = Command::cargo_bin("change-pan-spec")?
