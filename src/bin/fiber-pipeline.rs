@@ -6,7 +6,6 @@ use std::io::copy;
 use std::process::{Child, Command, Stdio}; // Add methods on commands
 // add anyhow for error handling
 use anyhow::{Error, Result};
-use std::os::unix::prelude::*;
 
 #[derive(Parser, Debug)]
 /// Execute a complex pipeline involving multiple tools.
@@ -26,6 +25,9 @@ pub struct FiberPipelineArgs {
     /// Optional file to save the output of vg inject
     #[clap(long)]
     gam: Option<String>,
+    /// Do not check for programs installed in PATH
+    #[clap(short, long, hide = true)]
+    no_check: bool,
 }
 
 pub fn run_change_pan_spec(args: &FiberPipelineArgs) -> Child {
@@ -168,15 +170,17 @@ fn main() -> Result<(), anyhow::Error> {
         args.output
     );
 
-    // check and make sure samtools and vg are installed
-    Command::new("samtools")
-        .arg("--version")
-        .output()
-        .expect("samtools is not installed or not found in PATH");
-    Command::new("vg")
-        .arg("--version")
-        .output()
-        .expect("vg is not installed or not found in PATH");
+    if !args.no_check {
+        // check and make sure samtools and vg are installed
+        Command::new("samtools")
+            .arg("--version")
+            .output()
+            .expect("samtools is not installed or not found in PATH");
+        Command::new("vg")
+            .arg("--version")
+            .output()
+            .expect("vg is not installed or not found in PATH");
+    }
     // ensure the input file path exists and that it is not a pipe
     let in_path = std::path::Path::new(&args.input);
     if !in_path.exists() {

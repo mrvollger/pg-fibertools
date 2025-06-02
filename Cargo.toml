@@ -13,6 +13,7 @@ env_logger = "0.11.8"
 regex = "1.11"
 linear-map = "1.2.0"
 anyhow = "1.0.0"
+duct = "1.0.0"
 # Often used
 colored = "3.0.0"
 natord = "1.0.9"
